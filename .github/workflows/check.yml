@@ -1,0 +1,46 @@
+name: Check for new One Piece chapter
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub may delay scheduled runs a few minutes under load.
+    # Change to "*/10 * * * *" for every 10 minutes.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      send_test:
+        description: "Send a test notification (does not change the saved chapter)"
+        type: boolean
+        default: false
+
+# Lets the workflow commit the updated last_chapter.txt back to the repo.
+permissions:
+  contents: write
+
+# Never run two checks at the same time.
+concurrency:
+  group: one-piece-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check TCB Scans
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          FORCE_TEST: ${{ inputs.send_test }}
+        run: python3 check_chapter.py
+
+      - name: Save last chapter number
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add last_chapter.txt
+          git diff --cached --quiet || (git commit -m "Update last seen chapter" && git push)
