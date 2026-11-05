@@ -42,5 +42,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Test runs never create last_chapter.txt, so skip cleanly if it is missing.
+          if [ ! -f last_chapter.txt ]; then
+            echo "No last_chapter.txt yet; nothing to save."
+            exit 0
+          fi
           git add last_chapter.txt
           git diff --cached --quiet || (git commit -m "Update last seen chapter" && git push)
